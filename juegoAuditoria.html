@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crisis TI: Experiencia Inmersiva</title>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap');
+
+        :root {
+            --primary: #00e5ff;
+            --danger: #ff003c;
+            --warning: #ffb700;
+            --dark: #0a0a0f;
+            --panel: rgba(10, 10, 15, 0.85);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--dark);
+            color: white;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gameEnvironment {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            transition: background-image 1s ease-in-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+
+        #gameEnvironment::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 100%);
+            z-index: 1;
+        }
+
+        .red-alert::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255, 0, 0, 0.3);
+            animation: siren 1.5s infinite;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        @keyframes siren {
+            0% { opacity: 0; }
+            50% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+
+        .ui-container {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 600px;
+            background: var(--panel);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            border-radius: 15px;
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            max-height: 95vh;
+            overflow-y: auto;
+        }
+
+        .screen { display: none; padding: 25px; flex-direction: column; align-items: center; text-align: center; }
+        .screen.active { display: flex; }
+
+        h1, h2 { font-family: 'Orbitron', sans-serif; text-transform: uppercase; }
+        h1 { font-size: 2rem; color: var(--primary); text-shadow: 0 0 10px var(--primary); margin-bottom: 20px;}
+        .alert-text { color: var(--danger); font-size: 2.5rem; text-shadow: 0 0 20px var(--danger); animation: pulse 1s infinite;}
+        p { font-size: 1.2rem; line-height: 1.5; margin-bottom: 20px; color: #c8d6e5; }
+
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+        .btn {
+            background: transparent;
+            border: 2px solid var(--primary);
+            color: var(--primary);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            padding: 15px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .btn:active { transform: scale(0.95); }
+        .btn:hover { background: var(--primary); color: #000; box-shadow: 0 0 15px var(--primary); }
+        .btn-danger { border-color: var(--danger); color: var(--danger); }
+        .btn-danger:hover { background: var(--danger); color: white; box-shadow: 0 0 15px var(--danger); }
+        .btn-warning { border-color: var(--warning); color: var(--warning); }
+        .btn-warning:hover { background: var(--warning); color: #000; box-shadow: 0 0 15px var(--warning); }
+
+        .hud {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .hud-dept { color: var(--warning); font-size: 1rem; }
+        .hud-score { color: var(--primary); font-size: 1.2rem; }
+
+        .timer-track { width: 100%; height: 8px; background: #222; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+        .timer-fill { height: 100%; background: var(--primary); width: 100%; transition: width 0.1s linear, background 0.3s; }
+
+        .scenario-box { font-size: 1.3rem; font-weight: 600; text-align: left; margin-bottom: 25px; border-left: 4px solid var(--primary); padding-left: 15px; }
+        .options-grid { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+        
+        .opt-btn {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: left;
+            font-size: 1.1rem;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .opt-btn:disabled { cursor: not-allowed; }
+        .opt-btn.correct { background: rgba(0, 229, 255, 0.2); border-color: var(--primary); color: var(--primary); }
+        .opt-btn.incorrect { background: rgba(255, 0, 60, 0.2); border-color: var(--danger); color: var(--danger); }
+
+        .feedback-box {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            text-align: left;
+            display: none;
+            width: 100%;
+        }
+        .feedback-box.show { display: block; animation: slideUp 0.3s ease; }
+        .feedback-box.success { border-left: 4px solid var(--primary); background: rgba(0, 229, 255, 0.1); }
+        .feedback-box.error { border-left: 4px solid var(--danger); background: rgba(255, 0, 60, 0.1); }
+
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .next-btn { margin-top: 20px; display: none; }
+        .next-btn.show { display: block; }
+
+    </style>
+</head>
+<body>
+
+<audio id="bgMusic" loop>
+    <source src="music.mp3" type="audio/mpeg">
+</audio>
+
+<div id="gameEnvironment" style="background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop');">
+    
+    <div class="ui-container">
+        
+        <div id="entryScreen" class="screen active">
+            <h1>CORPORACIÓN GLOBAL</h1>
+            <p>Bienvenido al sistema corporativo. Por favor, valide su credencial de Auditor para ingresar a las instalaciones.</p>
+            <button class="btn" id="btnEnter">ESCANEAR CREDENCIAL E INGRESAR</button>
+        </div>
+
+        <div id="alertScreen" class="screen">
+            <h1 class="alert-text">¡ALERTA CRÍTICA!</h1>
+            <p>Se ha detectado una brecha masiva en la infraestructura. Los sistemas están fallando en múltiples departamentos.</p>
+            <p>Como Auditor Senior, debes recorrer las instalaciones, aplicar los marcos de aseguramiento (GRC) y estabilizar la situación.</p>
+            <button class="btn btn-danger" id="btnStartCrisis">INICIAR PROTOCOLO DE EMERGENCIA</button>
+        </div>
+
+        <div id="deptScreen" class="screen">
+            <h2 style="color: var(--primary); margin-bottom: 10px;">MOVIENDO AL SECTOR:</h2>
+            <h1 id="deptNameDisplay" style="font-size: 2.5rem; color: white;">...</h1>
+            <p id="deptDescDisplay">...</p>
+            <button class="btn" id="btnEnterDept">ENTRAR AL ÁREA</button>
+        </div>
+
+        <div id="gameScreen" class="screen">
+            <div class="hud">
+                <div class="hud-dept" id="hudDeptName">ZONA: NOC</div>
+                <div class="hud-score">PUNTOS: <span id="scoreDisplay">0</span></div>
+            </div>
+            
+            <div class="timer-track"><div class="timer-fill" id="timerBar"></div></div>
+            
+            <div class="scenario-box" id="scenarioText">Cargando situación...</div>
+            
+            <div class="options-grid" id="optionsContainer"></div>
+            
+            <div id="feedbackDiv" class="feedback-box"></div>
+            
+            <button class="btn next-btn" id="btnNextAction">Siguiente Acción ></button>
+        </div>
+
+        <div id="resultScreen" class="screen">
+            <h1>REPORTE POST-INCIDENTE</h1>
+            <h2 id="finalRank" style="font-size: 2.5rem; color: var(--warning); margin: 20px 0;">...</h2>
+            <p id="finalMessage" style="font-size: 1.2rem;"></p>
+            <p style="font-size: 1.5rem; color: var(--primary); margin-bottom: 20px;">Puntaje Final: <span id="finalScoreDisplay"></span></p>
+            
+            <button class="btn btn-warning" id="btnDownloadPDF">⬇ DESCARGAR REPORTE EN PDF</button>
+            <button class="btn" id="btnRestart" style="margin-top: 10px;">NUEVA SIMULACIÓN</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const departments = [
+        {
+            name: "CENTRO DE DATOS (NOC)",
+            description: "La primera línea de defensa. Servidores encriptados y caos operativo.",
+            bgImage: "url('https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=2000&auto=format&fit=crop')",
+            questions: [
+                {
+                    scenario: "Ransomware detectado. ¿Quién debe ACTIVAR los controles operativos de respuesta inmediata?",
+                    options: ["Auditoría interna (3ra línea)", "Gerencia de TI (1ra línea)", "Oficial de cumplimiento (2da línea)", "Comité Directivo"],
+                    correct: 1,
+                    explanation: "La 1ra línea (TI) ejecuta las operaciones y la respuesta táctica inmediata."
+                },
+                {
+                    scenario: "Los servidores están bloqueados. Necesitamos recolectar discos duros como evidencia legal sin alterarlos. ¿Qué disciplina usamos?",
+                    options: ["Seguridad Ofensiva", "Computación Forense", "Auditoría Financiera", "Ingeniería Social"],
+                    correct: 1,
+                    explanation: "La computación forense preserva y analiza evidencias digitales con validez legal."
+                }
+            ]
+        },
+        {
+            name: "OFICINA DEL CISO",
+            description: "Segunda línea de defensa. Monitoreo, gestión de riesgos y normativas.",
+            bgImage: "url('https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=2000&auto=format&fit=crop')",
+            questions: [
+                {
+                    scenario: "El CISO está coordinando el impacto del riesgo general. ¿En qué línea de defensa opera?",
+                    options: ["Primera línea", "Segunda línea", "Tercera línea", "Cuarta línea"],
+                    correct: 1,
+                    explanation: "El CISO pertenece a la 2da línea: supervisa riesgos y cumplimiento, no opera los sistemas."
+                },
+                {
+                    scenario: "Para restablecer el orden a largo plazo, el CISO sugiere certificar el Sistema de Gestión de Seguridad (SGSI). ¿Qué norma aplica?",
+                    options: ["ISO/IEC 27001", "ISO 9001", "ITIL v4", "COSO"],
+                    correct: 0,
+                    explanation: "ISO 27001 es el estándar internacional para implementar un SGSI seguro."
+                }
+            ]
+        },
+        {
+            name: "SALA DE JUNTAS",
+            description: "Alta gerencia y comité de auditoría. Decisiones estratégicas y GRC.",
+            bgImage: "url('https://images.unsplash.com/photo-1505373877841-8d25f7d46678?q=80&w=2000&auto=format&fit=crop')",
+            questions: [
+                {
+                    scenario: "La junta necesita alinear los objetivos del negocio con las amenazas y leyes. ¿Qué marco estratégico integral usamos?",
+                    options: ["Scrum", "GRC (Gobierno, Riesgo y Cumplimiento)", "ISO 14001", "DevSecOps"],
+                    correct: 1,
+                    explanation: "GRC asegura que TI apoye los objetivos del negocio gestionando riesgos y cumpliendo la ley."
+                },
+                {
+                    scenario: "Para evitar saturar a la empresa con auditores, piden coordinar los informes internos, externos y de cumplimiento. ¿Cómo se llama esto?",
+                    options: ["Aseguramiento combinado", "Auditoría ágil", "Reingeniería de procesos", "Análisis DAFO"],
+                    correct: 0,
+                    explanation: "El aseguramiento combinado unifica a todos los proveedores de revisión en un solo frente."
+                },
+                {
+                    scenario: "Se solicita una herramienta visual para saber qué auditor cubre qué riesgo. ¿Qué debemos mostrarles?",
+                    options: ["Diagrama de Gantt", "Mapa de Aseguramiento", "Topología de Red", "Matriz RACI"],
+                    correct: 1,
+                    explanation: "El mapa de aseguramiento visualiza la cobertura de riesgos por cada línea de defensa."
+                }
+            ]
+        },
+        {
+            name: "AUDITORÍA INTERNA",
+            description: "Tercera línea de defensa. Aseguramiento independiente post-crisis.",
+            bgImage: "url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=2000&auto=format&fit=crop')",
+            questions: [
+                {
+                    scenario: "La crisis pasó. La Junta exige revisar la efectividad de los controles de TI de forma totalmente objetiva. ¿Quién debe hacerlo?",
+                    options: ["El propio gerente de TI", "El CISO", "Auditoría Interna", "El proveedor de Antivirus"],
+                    correct: 2,
+                    explanation: "Auditoría Interna (3ra línea) provee la evaluación independiente final sobre los controles."
+                },
+                {
+                    scenario: "Al realizar la auditoría bajo Cobit 5, actúas como 'Profesional de aseguramiento'. ¿Quiénes son las otras dos partes?",
+                    options: ["Parte responsable y Usuario", "Hacker y Víctima", "Cliente y Proveedor", "Juez y Jurado"],
+                    correct: 0,
+                    explanation: "La relación tripartita es: Parte responsable (TI), Usuario (Directorio) y Auditor."
+                }
+            ]
+        }
+    ];
+
+    let currentDeptIdx = 0;
+    let currentQuestionIdx = 0;
+    let score = 0;
+    let totalQuestions = departments.reduce((acc, dept) => acc + dept.questions.length, 0);
+    
+    let timerInterval;
+    let timeLeft;
+    const TIME_LIMIT = 15;
+
+    const bgEnvironment = document.getElementById('gameEnvironment');
+    const bgMusic = document.getElementById('bgMusic');
+    
+    const screens = {
+        entry: document.getElementById('entryScreen'),
+        alert: document.getElementById('alertScreen'),
+        dept: document.getElementById('deptScreen'),
+        game: document.getElementById('gameScreen'),
+        result: document.getElementById('resultScreen')
+    };
+
+    const elements = {
+        deptName: document.getElementById('deptNameDisplay'),
+        deptDesc: document.getElementById('deptDescDisplay'),
+        hudDept: document.getElementById('hudDeptName'),
+        score: document.getElementById('scoreDisplay'),
+        timer: document.getElementById('timerBar'),
+        scenario: document.getElementById('scenarioText'),
+        options: document.getElementById('optionsContainer'),
+        feedback: document.getElementById('feedbackDiv'),
+        btnNext: document.getElementById('btnNextAction')
+    };
+
+    function showScreen(screenName) {
+        Object.values(screens).forEach(s => s.classList.remove('active'));
+        screens[screenName].classList.add('active');
+    }
+
+    document.getElementById('btnEnter').addEventListener('click', () => {
+        bgMusic.volume = 0.5;
+        bgMusic.play().catch(e => console.log("Audio bloqueado por navegador", e));
+        
+        bgEnvironment.classList.add('red-alert');
+        showScreen('alert');
+    });
+
+    document.getElementById('btnStartCrisis').addEventListener('click', () => {
+        bgEnvironment.classList.remove('red-alert');
+        currentDeptIdx = 0;
+        currentQuestionIdx = 0;
+        score = 0;
+        elements.score.textContent = score;
+        loadDepartmentTransition();
+    });
+
+    function loadDepartmentTransition() {
+        const dept = departments[currentDeptIdx];
+        bgEnvironment.style.backgroundImage = dept.bgImage; 
+        
+        elements.deptName.textContent = dept.name;
+        elements.deptDesc.textContent = dept.description;
+        elements.hudDept.textContent = "ZONA: " + dept.name;
+        
+        showScreen('dept');
+    }
+
+    document.getElementById('btnEnterDept').addEventListener('click', () => {
+        showScreen('game');
+        loadQuestion();
+    });
+
+    function loadQuestion() {
+        clearInterval(timerInterval);
+        const dept = departments[currentDeptIdx];
+        const q = dept.questions[currentQuestionIdx];
+
+        elements.btnNext.classList.remove('show');
+        elements.feedback.className = 'feedback-box';
+        elements.timer.style.width = '100%';
+        elements.timer.style.background = 'var(--primary)';
+        elements.options.innerHTML = '';
+        elements.scenario.textContent = q.scenario;
+
+        q.options.forEach((opt, index) => {
+            const btn = document.createElement('button');
+            btn.className = 'opt-btn';
+            btn.textContent = opt;
+            btn.addEventListener('click', () => handleAnswer(index));
+            elements.options.appendChild(btn);
+        });
+
+        startTimer();
+    }
+
+    function startTimer() {
+        timeLeft = TIME_LIMIT;
+        timerInterval = setInterval(() => {
+            timeLeft -= 0.1;
+            const percentage = (timeLeft / TIME_LIMIT) * 100;
+            elements.timer.style.width = `${percentage}%`;
+
+            if (percentage < 40) elements.timer.style.background = 'var(--warning)';
+            if (percentage < 20) elements.timer.style.background = 'var(--danger)';
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                handleAnswer(-1);
+            }
+        }, 100);
+    }
+
+    function handleAnswer(selectedIndex) {
+        clearInterval(timerInterval);
+        const dept = departments[currentDeptIdx];
+        const q = dept.questions[currentQuestionIdx];
+        const buttons = document.querySelectorAll('.opt-btn');
+        const isCorrect = selectedIndex === q.correct;
+
+        buttons.forEach((btn, idx) => {
+            btn.disabled = true;
+            if (idx === q.correct) btn.classList.add('correct');
+            else if (idx === selectedIndex) btn.classList.add('incorrect');
+        });
+
+        elements.feedback.classList.add('show');
+        
+        if (isCorrect) {
+            score += 100;
+            elements.score.textContent = score;
+            elements.feedback.classList.add('success');
+            elements.feedback.innerHTML = `✔️ <strong>ACCIÓN CORRECTA:</strong> ${q.explanation}`;
+        } else {
+            bgEnvironment.classList.add('red-alert');
+            setTimeout(() => bgEnvironment.classList.remove('red-alert'), 500);
+            
+            elements.feedback.classList.add('error');
+            const reason = selectedIndex === -1 ? "TIEMPO AGOTADO" : "ACCIÓN CRÍTICA FALLIDA";
+            elements.feedback.innerHTML = `❌ <strong>${reason}:</strong> ${q.explanation}`;
+        }
+
+        elements.btnNext.classList.add('show');
+    }
+
+    elements.btnNext.addEventListener('click', () => {
+        currentQuestionIdx++;
+        const dept = departments[currentDeptIdx];
+
+        if (currentQuestionIdx >= dept.questions.length) {
+            currentDeptIdx++;
+            currentQuestionIdx = 0;
+            
+            if (currentDeptIdx >= departments.length) {
+                endGame();
+            } else {
+                loadDepartmentTransition();
+            }
+        } else {
+            loadQuestion();
+        }
+    });
+
+    function endGame() {
+        bgMusic.pause();
+        bgEnvironment.style.backgroundImage = "url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2000&auto=format&fit=crop')";
+        
+        const maxScore = totalQuestions * 100;
+        const percent = score / maxScore;
+        
+        let rank = "";
+        let msg = "";
+
+        if (percent >= 0.8) {
+            rank = "CISO HONORÍFICO";
+            msg = "Has salvado a la corporación. Excelente dominio del aseguramiento tecnológico.";
+        } else if (percent >= 0.5) {
+            rank = "AUDITOR INTERMEDIO";
+            msg = "Sobrevivimos, pero hubo pérdidas. Necesitas repasar las Líneas de Defensa.";
+        } else {
+            rank = "SISTEMA COMPROMETIDO";
+            msg = "La empresa se ha ido a la quiebra. Falta conocimiento crítico en GRC.";
+            bgEnvironment.classList.add('red-alert');
+        }
+
+        document.getElementById('finalRank').textContent = rank;
+        document.getElementById('finalMessage').textContent = msg;
+        document.getElementById('finalScoreDisplay').textContent = `${score} / ${maxScore}`;
+        
+        showScreen('result');
+    }
+
+    document.getElementById('btnRestart').addEventListener('click', () => {
+        bgEnvironment.classList.remove('red-alert');
+        bgEnvironment.style.backgroundImage = "url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop')";
+        showScreen('entry');
+    });
+
+    // --- LÓGICA DE GENERACIÓN DE PDF ---
+    document.getElementById('btnDownloadPDF').addEventListener('click', () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // Obtener los datos del resultado actual
+        const rank = document.getElementById('finalRank').textContent;
+        const message = document.getElementById('finalMessage').textContent;
+        const finalScore = document.getElementById('finalScoreDisplay').textContent;
+        const date = new Date().toLocaleDateString();
+
+        // Estilos y contenido del PDF
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(22);
+        doc.setTextColor(200, 0, 0); // Título en rojo corporativo
+        doc.text("REPORTE DE INCIDENTE TI", 20, 30);
+
+        doc.setFontSize(12);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Fecha del simulacro: ${date}`, 20, 45);
+        doc.text(`Empresa: CORPORACIÓN GLOBAL`, 20, 52);
+
+        doc.setLineWidth(0.5);
+        doc.line(20, 60, 190, 60); // Línea separadora
+
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.text(`Rango Obtenido: ${rank}`, 20, 75);
+        
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(14);
+        
+        // Ajustar el texto largo para que no se salga de la hoja
+        const splitMsg = doc.splitTextToSize(`Evaluación Oficial: ${message}`, 170);
+        doc.text(splitMsg, 20, 90);
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(0, 100, 255); // Azul para el puntaje
+        doc.text(`Puntaje de Defensa: ${finalScore}`, 20, 120);
+
+        doc.setFontSize(10);
+        doc.setTextColor(150, 150, 150);
+        doc.text("Generado automáticamente por el Sistema de Crisis TI", 20, 280);
+
+        // Disparar descarga
+        doc.save(`Reporte_Auditoria_${rank.replace(/\s+/g, '_')}.pdf`);
+    });
+
+</script>
+</body>
+</html>
