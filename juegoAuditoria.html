@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Crisis TI: Experiencia Inmersiva</title>
+    <title>Crisis TI</title>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
@@ -190,7 +190,7 @@
     <div class="ui-container">
         
         <div id="entryScreen" class="screen active">
-            <h1>CORPORACIÓN GLOBAL</h1>
+            <h1>CORPORACIÓN TECNOLÓGICA</h1>
             <p>Bienvenido al sistema corporativo. Por favor, valide su credencial de Auditor para ingresar a las instalaciones.</p>
             <button class="btn" id="btnEnter">ESCANEAR CREDENCIAL E INGRESAR</button>
         </div>
@@ -198,7 +198,7 @@
         <div id="alertScreen" class="screen">
             <h1 class="alert-text">¡ALERTA CRÍTICA!</h1>
             <p>Se ha detectado una brecha masiva en la infraestructura. Los sistemas están fallando en múltiples departamentos.</p>
-            <p>Como Auditor Senior, debes recorrer las instalaciones, aplicar los marcos de aseguramiento (GRC) y estabilizar la situación.</p>
+            <p>Como AuditoR, debes recorrer las instalaciones, aplicar los marcos de aseguramiento (GRC) para estabilizar la situación.</p>
             <button class="btn btn-danger" id="btnStartCrisis">INICIAR PROTOCOLO DE EMERGENCIA</button>
         </div>
 
@@ -454,14 +454,14 @@
             score += 100;
             elements.score.textContent = score;
             elements.feedback.classList.add('success');
-            elements.feedback.innerHTML = `✔️ <strong>ACCIÓN CORRECTA:</strong> ${q.explanation}`;
+            elements.feedback.innerHTML = `<strong>ACCIÓN CORRECTA:</strong> ${q.explanation}`;
         } else {
             bgEnvironment.classList.add('red-alert');
             setTimeout(() => bgEnvironment.classList.remove('red-alert'), 500);
             
             elements.feedback.classList.add('error');
             const reason = selectedIndex === -1 ? "TIEMPO AGOTADO" : "ACCIÓN CRÍTICA FALLIDA";
-            elements.feedback.innerHTML = `❌ <strong>${reason}:</strong> ${q.explanation}`;
+            elements.feedback.innerHTML = `<strong>${reason}:</strong> ${q.explanation}`;
         }
 
         elements.btnNext.classList.add('show');
@@ -496,14 +496,14 @@
         let msg = "";
 
         if (percent >= 0.8) {
-            rank = "CISO HONORÍFICO";
+            rank = "AUDITOR EXPERTO";
             msg = "Has salvado a la corporación. Excelente dominio del aseguramiento tecnológico.";
         } else if (percent >= 0.5) {
             rank = "AUDITOR INTERMEDIO";
             msg = "Sobrevivimos, pero hubo pérdidas. Necesitas repasar las Líneas de Defensa.";
         } else {
             rank = "SISTEMA COMPROMETIDO";
-            msg = "La empresa se ha ido a la quiebra. Falta conocimiento crítico en GRC.";
+            msg = "La empresa se ha ido a la quiebra. Fallo crítico en GRC.";
             bgEnvironment.classList.add('red-alert');
         }
 
